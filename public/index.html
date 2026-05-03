@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>文件夹监控测试</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1d252c;
+        background: #f6f7f9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        font-size: 28px;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .status {
+        border: 1px solid #c9d3dc;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #ffffff;
+        font-size: 14px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+
+      section {
+        background: #ffffff;
+        border: 1px solid #d9e0e6;
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 17px;
+      }
+
+      label {
+        display: block;
+        margin: 14px 0 8px;
+        font-size: 14px;
+        font-weight: 650;
+      }
+
+      input,
+      select,
+      button {
+        width: 100%;
+        min-height: 40px;
+        border-radius: 6px;
+        border: 1px solid #bac7d2;
+        font: inherit;
+      }
+
+      input,
+      select {
+        padding: 8px 10px;
+        background: #ffffff;
+      }
+
+      .radio-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .radio-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        border: 1px solid #bac7d2;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-weight: 650;
+      }
+
+      .radio-option input {
+        width: 16px;
+        min-height: 16px;
+        margin: 0;
+      }
+
+      button {
+        margin-top: 14px;
+        padding: 9px 12px;
+        border: 0;
+        background: #2364aa;
+        color: white;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        border: 1px solid #bac7d2;
+        background: #eef3f7;
+        color: #1d252c;
+      }
+
+      button.danger {
+        background: #b42318;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .meta {
+        margin-top: 12px;
+        color: #53616d;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+
+      .events {
+        display: grid;
+        gap: 10px;
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      .task-windows {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+
+      .task-window {
+        border: 1px solid #d6dee5;
+        border-radius: 8px;
+        background: #ffffff;
+        min-height: 260px;
+        overflow: hidden;
+      }
+
+      .task-window.active {
+        border-color: #2364aa;
+        box-shadow: 0 0 0 2px rgba(35, 100, 170, 0.12);
+      }
+
+      .task-window.closed {
+        display: none;
+      }
+
+      .task-window header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0;
+        padding: 10px 12px;
+        background: #f1f5f8;
+        border-bottom: 1px solid #d6dee5;
+      }
+
+      .task-window h3 {
+        margin: 0;
+        font-size: 14px;
+        overflow-wrap: anywhere;
+      }
+
+      .badge {
+        flex: 0 0 auto;
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: #d9f0e4;
+        color: #14532d;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .task-window .events {
+        padding: 10px;
+      }
+
+      .subdir-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .subdir-lane {
+        min-width: 0;
+        border: 1px solid #dce3e8;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .subdir-lane h4 {
+        margin: 0;
+        padding: 8px 10px;
+        background: #f8fafb;
+        border-bottom: 1px solid #dce3e8;
+        font-size: 13px;
+      }
+
+      .subdir-lane .events {
+        max-height: 300px;
+      }
+
+      .event {
+        border: 1px solid #dce3e8;
+        border-radius: 8px;
+        padding: 12px;
+        background: #fbfcfd;
+      }
+
+      .event strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        color: #384652;
+        overflow-wrap: anywhere;
+      }
+
+      .empty {
+        color: #697783;
+        border: 1px dashed #cbd5dd;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+      }
+
+      @media (max-width: 820px) {
+        main {
+          width: min(100% - 24px, 680px);
+          padding: 20px 0;
+        }
+
+        header,
+        .grid {
+          display: block;
+        }
+
+        .status {
+          margin-top: 12px;
+          width: fit-content;
+        }
+
+        section + section {
+          margin-top: 14px;
+        }
+
+        .subdir-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>文件夹监控测试</h1>
+        <div class="status" id="connectionStatus">SSE 连接中</div>
+      </header>
+
+      <div class="grid">
+        <section>
+          <h2>任务与上传</h2>
+          <label for="taskId">Task ID</label>
+          <input id="taskId" />
+          <button id="newTask">生成时间戳任务并启动</button>
+
+          <label for="taskSelect">选择任务</label>
+          <select id="taskSelect"></select>
+
+          <label>选择子目录</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="subdir" value="C1" checked />
+              C1
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="subdir" value="C0" />
+              C0
+            </label>
+          </div>
+
+          <label for="fileInput">选择文件</label>
+          <input id="fileInput" type="file" />
+          <button id="uploadFile">上传到选中子目录</button>
+          <button class="danger" id="stopTask">停止选中任务</button>
+          <button class="secondary" id="refreshTasks">刷新任务列表</button>
+
+          <div class="meta" id="taskMeta"></div>
+        </section>
+
+        <section>
+          <h2>任务接收窗口</h2>
+          <div class="task-windows" id="taskWindows">
+            <div class="empty">启动任务后会打开对应接收窗口</div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const taskIdInput = document.querySelector("#taskId");
+      const taskSelect = document.querySelector("#taskSelect");
+      const fileInput = document.querySelector("#fileInput");
+      const taskWindows = document.querySelector("#taskWindows");
+      const taskMeta = document.querySelector("#taskMeta");
+      const connectionStatus = document.querySelector("#connectionStatus");
+
+      let tasks = [];
+      const eventsByTask = new Map();
+      const BASE_PATH = window.APP_BASE_PATH || "";
+
+      function apiPath(path) {
+        return `${BASE_PATH}${path}`;
+      }
+
+      function timestampId() {
+        return String(Date.now());
+      }
+
+      function setTaskOptions() {
+        const selectedTaskId = taskSelect.value;
+        taskSelect.innerHTML = "";
+        for (const task of tasks) {
+          const option = document.createElement("option");
+          option.value = task.taskId;
+          option.textContent = task.taskId;
+          taskSelect.appendChild(option);
+        }
+        if (tasks.some((task) => task.taskId === selectedTaskId)) {
+          taskSelect.value = selectedTaskId;
+        }
+        renderSelectedTask();
+        renderTaskWindows();
+      }
+
+      function renderSelectedTask() {
+        const task = tasks.find((item) => item.taskId === taskSelect.value);
+        taskMeta.innerHTML = task
+          ? `监控目录：<br><code>${task.dir}</code><br>子目录：<code>C1</code>、<code>C0</code><br>启动时间：${task.startedAt}`
+          : "尚未启动任务";
+        renderTaskWindows();
+      }
+
+      function renderTaskWindows() {
+        if (!tasks.length) {
+          taskWindows.innerHTML = '<div class="empty">启动任务后会打开对应接收窗口</div>';
+          return;
+        }
+
+        taskWindows.innerHTML = "";
+        for (const task of tasks) {
+          const windowEl = document.createElement("article");
+          windowEl.className = task.taskId === taskSelect.value ? "task-window active" : "task-window";
+          windowEl.dataset.taskId = task.taskId;
+          windowEl.innerHTML = `
+            <header>
+              <h3>${escapeHtml(task.taskId)}</h3>
+              <span class="badge">监听中</span>
+            </header>
+            <div class="subdir-grid">
+              <div class="subdir-lane">
+                <h4>C1</h4>
+                <div class="events" data-events-for="${escapeHtml(task.taskId)}" data-subdir="C1"></div>
+              </div>
+              <div class="subdir-lane">
+                <h4>C0</h4>
+                <div class="events" data-events-for="${escapeHtml(task.taskId)}" data-subdir="C0"></div>
+              </div>
+            </div>
+          `;
+          taskWindows.appendChild(windowEl);
+          renderTaskEvents(task.taskId, "C1");
+          renderTaskEvents(task.taskId, "C0");
+        }
+      }
+
+      function renderTaskEvents(taskId, subdir) {
+        const list = taskWindows.querySelector(
+          `[data-events-for="${cssEscape(taskId)}"][data-subdir="${cssEscape(subdir)}"]`
+        );
+        if (!list) return;
+
+        const taskEvents = (eventsByTask.get(taskId) || []).filter((event) => event.subdir === subdir);
+        if (!taskEvents.length) {
+          list.innerHTML = '<div class="empty">等待新文件</div>';
+          return;
+        }
+
+        list.innerHTML = "";
+        for (const payload of taskEvents) {
+          const item = document.createElement("div");
+          item.className = "event";
+          item.innerHTML = `
+            <strong>${escapeHtml(payload.fileName)}</strong>
+            <div>子目录：<code>${escapeHtml(payload.subdir || "")}</code></div>
+            <div>大小：${payload.size} bytes</div>
+            <div>发现时间：${escapeHtml(payload.detectedAt || "")}</div>
+            <div>接收时间：${escapeHtml(payload.receivedAt || "")}</div>
+            <div>路径：<code>${escapeHtml(payload.path || "")}</code></div>
+          `;
+          list.appendChild(item);
+        }
+      }
+
+      function addEvent(payload) {
+        const taskEvents = eventsByTask.get(payload.taskId) || [];
+        eventsByTask.set(payload.taskId, [payload, ...taskEvents]);
+        renderTaskEvents(payload.taskId, payload.subdir);
+      }
+
+      function removeTask(taskId) {
+        tasks = tasks.filter((task) => task.taskId !== taskId);
+        eventsByTask.delete(taskId);
+        if (taskSelect.value === taskId && tasks[0]) {
+          taskSelect.value = tasks[0].taskId;
+        }
+        setTaskOptions();
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        })[char]);
+      }
+
+      function cssEscape(value) {
+        if (window.CSS && CSS.escape) return CSS.escape(value);
+        return String(value).replace(/["\\]/g, "\\$&");
+      }
+
+      async function refreshTasks() {
+        const response = await fetch(apiPath("/api/tasks"));
+        tasks = await response.json();
+        setTaskOptions();
+      }
+
+      async function startTask() {
+        const taskId = taskIdInput.value.trim() || timestampId();
+        taskIdInput.value = taskId;
+        const response = await fetch(apiPath("/api/start"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ taskId })
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          alert(error.error || "启动失败");
+          return;
+        }
+        const task = await response.json();
+        tasks = [task, ...tasks.filter((item) => item.taskId !== task.taskId)];
+        if (!eventsByTask.has(task.taskId)) eventsByTask.set(task.taskId, []);
+        setTaskOptions();
+        taskSelect.value = task.taskId;
+        renderSelectedTask();
+      }
+
+      async function stopTask() {
+        const taskId = taskSelect.value;
+        if (!taskId) {
+          alert("请先选择任务");
+          return;
+        }
+
+        const response = await fetch(apiPath(`/api/tasks/${encodeURIComponent(taskId)}/stop`), {
+          method: "POST"
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          alert(error.error || "停止失败");
+          return;
+        }
+        removeTask(taskId);
+      }
+
+      async function uploadFile() {
+        const file = fileInput.files[0];
+        const taskId = taskSelect.value;
+        const subdir = document.querySelector('input[name="subdir"]:checked').value;
+        if (!taskId) {
+          alert("请先启动并选择任务");
+          return;
+        }
+        if (!file) {
+          alert("请选择文件");
+          return;
+        }
+
+        const response = await fetch(apiPath(`/api/tasks/${encodeURIComponent(taskId)}/upload`), {
+          method: "POST",
+          headers: {
+            "content-type": "application/octet-stream",
+            "x-file-name": encodeURIComponent(file.name),
+            "x-subdir": subdir
+          },
+          body: await file.arrayBuffer()
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          alert(error.error || "上传失败");
+        }
+      }
+
+      document.querySelector("#newTask").addEventListener("click", startTask);
+      document.querySelector("#refreshTasks").addEventListener("click", refreshTasks);
+      document.querySelector("#uploadFile").addEventListener("click", uploadFile);
+      document.querySelector("#stopTask").addEventListener("click", stopTask);
+      taskSelect.addEventListener("change", renderSelectedTask);
+
+      const source = new EventSource(apiPath("/events"));
+      source.addEventListener("open", () => {
+        connectionStatus.textContent = "SSE 已连接";
+      });
+      source.addEventListener("error", () => {
+        connectionStatus.textContent = "SSE 重连中";
+      });
+      source.addEventListener("task-started", (event) => {
+        const task = JSON.parse(event.data);
+        tasks = [task, ...tasks.filter((item) => item.taskId !== task.taskId)];
+        if (!eventsByTask.has(task.taskId)) eventsByTask.set(task.taskId, []);
+        setTaskOptions();
+      });
+      source.addEventListener("task-stopped", (event) => {
+        removeTask(JSON.parse(event.data).taskId);
+      });
+      source.addEventListener("file-received", (event) => {
+        addEvent(JSON.parse(event.data));
+      });
+
+      taskIdInput.value = timestampId();
+      refreshTasks();
+    </script>
+  </body>
+</html>

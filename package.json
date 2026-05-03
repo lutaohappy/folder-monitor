@@ -1,0 +1,12 @@
+{
+  "name": "folder-monitor-demo",
+  "version": "1.0.0",
+  "description": "Folder monitor demo with task directories, receiver service, and SSE test frontend.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
