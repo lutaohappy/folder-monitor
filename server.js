@@ -211,28 +211,20 @@ async function startRedisConsumer() {
 
   while (consumerRunning) {
     try {
-      const response = await redisClient.sendCommand([
-        "XREADGROUP",
-        "GROUP",
+      const response = await redisClient.xReadGroup(
         REDIS_GROUP,
         consumerName,
-        "COUNT",
-        "50",
-        "BLOCK",
-        "2000",
-        "STREAMS",
-        REDIS_STREAM,
-        ">"
-      ]);
+        { key: REDIS_STREAM, id: ">" },
+        { COUNT: 50, BLOCK: 2000 }
+      );
       if (!response) continue;
 
-      for (const [, messages] of response) {
-        for (const [id, fields] of messages) {
-          const payloadIndex = fields.indexOf("payload");
-          if (payloadIndex >= 0) {
-            handleFileEvent(JSON.parse(fields[payloadIndex + 1]));
+      for (const stream of response) {
+        for (const message of stream.messages) {
+          if (message.message.payload) {
+            handleFileEvent(JSON.parse(message.message.payload));
           }
-          await redisClient.xAck(REDIS_STREAM, REDIS_GROUP, id);
+          await redisClient.xAck(REDIS_STREAM, REDIS_GROUP, message.id);
         }
       }
     } catch (error) {
